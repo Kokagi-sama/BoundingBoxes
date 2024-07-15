@@ -1,5 +1,5 @@
 @echo off
-echo Setting up and running the frontend...
+echo Setting up and running the application...
 
 :: Navigate to the React app directory
 cd bounding-box-app
