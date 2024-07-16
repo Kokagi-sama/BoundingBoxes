@@ -16,8 +16,8 @@ Run the batch file `"setup_bounding_box_app.bat"`
 
 ## Manual Setup
 
-### Frontend (React)
-1. Navigate to the Frontend Directory:
+### React Application
+1. Navigate to the application Directory:
 ```
 cd bounding-box-app
 ```
