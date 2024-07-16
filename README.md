@@ -17,7 +17,7 @@ Run the batch file `"setup_bounding_box_app.bat"`
 ## Manual Setup
 
 ### React Application
-1. Navigate to the application Directory:
+1. Navigate to the Application Directory:
 ```
 cd bounding-box-app
 ```
