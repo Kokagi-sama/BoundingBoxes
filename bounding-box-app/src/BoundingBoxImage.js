@@ -3,6 +3,7 @@ import { Stage, Layer, Image as KonvaImage, Rect, Transformer, Text, Line, Circl
 import useImage from 'use-image';
 import { v4 as uuidv4 } from 'uuid';
 
+//Set up state variables
 const BoundingBoxImage = ({ imageUrl }) => {
   const [image] = useImage(imageUrl);
   const [boundingBoxes, setBoundingBoxes] = useState([]);
@@ -22,6 +23,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
     setPolygons([]);
   }, [imageUrl]);
 
+  //House Functionalities
   const handleMouseDown = (e) => {
     if (isDrawingPolygon) {
       const { x, y } = stageRef.current.getPointerPosition();
@@ -68,6 +70,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
     }
   };
 
+  //Non-mouse functionalities
   const handleLabelChange = (e) => {
     setLabel(e.target.value);
     setBoundingBoxes(boundingBoxes.map(box =>
@@ -88,6 +91,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
     ));
   };
 
+  //Click `Del` or `Delete` to delete the selected bounding box/polygon
   const handleDelete = () => {
     setBoundingBoxes(boundingBoxes.filter(box => box.id !== selectedId));
     setPolygons(polygons.filter(polygon => polygon.id !== selectedId));
@@ -104,6 +108,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
       height: box.height
     }));
 
+    //Pascal VOC(Visual Object Class) xml formatting
     const xml = `
 <annotation>
   <folder>images</folder>
