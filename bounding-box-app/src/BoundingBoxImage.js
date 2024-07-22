@@ -1,8 +1,10 @@
+//Import dependencies
 import React, { useState, useRef, useEffect } from 'react';
 import { Stage, Layer, Image as KonvaImage, Rect, Transformer, Text, Line, Circle } from 'react-konva';
 import useImage from 'use-image';
 import { v4 as uuidv4 } from 'uuid';
 
+//Random Number Generators
 const generateRandomColor = () => {
   const letters = '0123456789ABCDEF';
   let color = '#';
@@ -35,6 +37,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
     setPolygons([]);
   }, [imageUrl]);
 
+  //Mouse functions
   const handleMouseDown = (e) => {
     if (isDrawingPolygon) {
       const { x, y } = stageRef.current.getPointerPosition();
@@ -103,6 +106,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
     }
   };
 
+  //Non-mouse functions
   const handleLabelChange = (e) => {
     const newLabel = e.target.value;
     setLabel(newLabel);
@@ -215,6 +219,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
     }
   }, [selectedId]);
 
+  //Polygon functions
   const handleFinishPolygon = () => {
     if (newPolygon.length > 2) {
       const newPoly = { id: uuidv4(), points: newPolygon, label: '', color };
@@ -246,6 +251,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
     ));
   };
 
+  //Label/Class (Menu Popup) functions
   const handleClassSelect = (className) => {
     const selectedColor = colorMap.current[className] || generateRandomColor();
     if (!colorMap.current[className]) {
@@ -273,6 +279,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
     setShowMenu(false);
   };
 
+  //Html/UI
   return (
     <div>
       <div style={{ padding: '1.25 rem' }}>
