@@ -3,7 +3,15 @@ import { Stage, Layer, Image as KonvaImage, Rect, Transformer, Text, Line, Circl
 import useImage from 'use-image';
 import { v4 as uuidv4 } from 'uuid';
 
-//Set up state variables
+const generateRandomColor = () => {
+  const letters = '0123456789ABCDEF';
+  let color = '#';
+  for (let i = 0; i < 6; i++) {
+    color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+};
+
 const BoundingBoxImage = ({ imageUrl }) => {
   const [image] = useImage(imageUrl);
   const [boundingBoxes, setBoundingBoxes] = useState([]);
@@ -14,20 +22,27 @@ const BoundingBoxImage = ({ imageUrl }) => {
   const [isDrawingPolygon, setIsDrawingPolygon] = useState(false);
   const [newPolygon, setNewPolygon] = useState([]);
   const [polygons, setPolygons] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [showMenu, setShowMenu] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   const stageRef = useRef(null);
   const trRef = useRef(null);
+  const colorMap = useRef({});
+  const [currentMousePos, setCurrentMousePos] = useState({ x: 0, y: 0 });
 
-  // Reset boundingBoxes and polygons when imageUrl changes
   useEffect(() => {
     setBoundingBoxes([]);
     setPolygons([]);
   }, [imageUrl]);
 
-  //House Functionalities
   const handleMouseDown = (e) => {
     if (isDrawingPolygon) {
       const { x, y } = stageRef.current.getPointerPosition();
-      setNewPolygon([...newPolygon, { x, y }]);
+      if (newPolygon.length > 0 && Math.hypot(x - newPolygon[0].x, y - newPolygon[0].y) < 10) {
+        handleFinishPolygon();
+      } else {
+        setNewPolygon([...newPolygon, { x, y }]);
+      }
       return;
     }
 
@@ -35,6 +50,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
       const { x, y } = stageRef.current.getPointerPosition();
       setNewBox({ id: uuidv4(), x, y, width: 0, height: 0, label: '', color });
       setSelectedId(null);
+      setShowMenu(false);
     }
   };
 
@@ -47,55 +63,81 @@ const BoundingBoxImage = ({ imageUrl }) => {
         height: y - prevBox.y,
       }));
     }
+
+    if (isDrawingPolygon && newPolygon.length > 0) {
+      const { x, y } = stageRef.current.getPointerPosition();
+      setCurrentMousePos({ x, y });
+    }
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e) => {
     if (newBox && (newBox.width > 5 || newBox.height > 5)) {
+      const { x, y } = stageRef.current.getPointerPosition();
+      setMenuPosition({ x, y });
+      setShowMenu(true);
       setBoundingBoxes([...boundingBoxes, newBox]);
+      setSelectedId(newBox.id);
+      setLabel(''); // Clear the text field each time the menu pops up
     }
     setNewBox(null);
   };
 
-  const handleSelect = (id) => {
+  const handleSelect = (id, type, x, y) => {
+    if (isDrawingPolygon) return; // Prevent selection while drawing a polygon
+
     setSelectedId(id);
-    const selectedBox = boundingBoxes.find(box => box.id === id);
-    const selectedPolygon = polygons.find(polygon => polygon.id === id);
-    if (selectedBox) {
-      setLabel(selectedBox.label);
-      setColor(selectedBox.color);
-    }
-    if (selectedPolygon) {
-      setLabel(selectedPolygon.label);
-      setColor(selectedPolygon.color);
+    setMenuPosition({ x, y });
+    setShowMenu(true);
+    if (type === 'box') {
+      const selectedBox = boundingBoxes.find(box => box.id === id);
+      if (selectedBox) {
+        setLabel(selectedBox.label);
+        setColor(selectedBox.color);
+      }
+    } else if (type === 'polygon') {
+      const selectedPolygon = polygons.find(polygon => polygon.id === id);
+      if (selectedPolygon) {
+        setLabel(selectedPolygon.label);
+        setColor(selectedPolygon.color);
+      }
     }
   };
 
-  //Non-mouse functionalities
   const handleLabelChange = (e) => {
-    setLabel(e.target.value);
+    const newLabel = e.target.value;
+    setLabel(newLabel);
+    const newColor = colorMap.current[newLabel] || generateRandomColor();
+    if (!colorMap.current[newLabel]) {
+      colorMap.current[newLabel] = newColor;
+    }
+    setColor(newColor);
+
     setBoundingBoxes(boundingBoxes.map(box =>
-      box.id === selectedId ? { ...box, label: e.target.value } : box
+      box.id === selectedId ? { ...box, label: newLabel, color: newColor } : box
     ));
     setPolygons(polygons.map(polygon =>
-      polygon.id === selectedId ? { ...polygon, label: e.target.value } : polygon
+      polygon.id === selectedId ? { ...polygon, label: newLabel, color: newColor } : polygon
     ));
   };
 
   const handleColorChange = (e) => {
-    setColor(e.target.value);
+    const newColor = e.target.value;
+    setColor(newColor);
+  
     setBoundingBoxes(boundingBoxes.map(box =>
-      box.id === selectedId ? { ...box, color: e.target.value } : box
+      box.label === label ? { ...box, color: newColor } : box
     ));
     setPolygons(polygons.map(polygon =>
-      polygon.id === selectedId ? { ...polygon, color: e.target.value } : polygon
+      polygon.label === label ? { ...polygon, color: newColor } : polygon
     ));
+    colorMap.current[label] = newColor;
   };
-
-  //Click `Del` or `Delete` to delete the selected bounding box/polygon
+  
   const handleDelete = () => {
     setBoundingBoxes(boundingBoxes.filter(box => box.id !== selectedId));
     setPolygons(polygons.filter(polygon => polygon.id !== selectedId));
     setSelectedId(null);
+    setShowMenu(false);
   };
 
   const handleExport = () => {
@@ -108,7 +150,6 @@ const BoundingBoxImage = ({ imageUrl }) => {
       height: box.height
     }));
 
-    //Pascal VOC(Visual Object Class) xml formatting
     const xml = `
 <annotation>
   <folder>images</folder>
@@ -128,7 +169,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
     <name>${box.label}</name>
     <pose>Unspecified</pose>
     <truncated>0</truncated>
-    <difficult>0</truncated>
+    <difficult>0</difficult>
     <bndbox>
       <xmin>${Math.round(box.x)}</xmin>
       <ymin>${Math.round(box.y)}</ymin>
@@ -145,7 +186,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
     a.download = 'annotations.xml';
     document.body.appendChild(a);
     a.click();
-    document.bodyNaNpxoveChild(a);
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
@@ -159,7 +200,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      windowNaNpxoveEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [selectedId]);
 
@@ -176,7 +217,12 @@ const BoundingBoxImage = ({ imageUrl }) => {
 
   const handleFinishPolygon = () => {
     if (newPolygon.length > 2) {
-      setPolygons([...polygons, { id: uuidv4(), points: newPolygon, label: '', color }]);
+      const newPoly = { id: uuidv4(), points: newPolygon, label: '', color };
+      setPolygons([...polygons, newPoly]);
+      setMenuPosition({ x: newPolygon[0].x, y: newPolygon[0].y });
+      setSelectedId(newPoly.id);
+      setShowMenu(true);
+      setLabel(""); // Reset the text field
     }
     setNewPolygon([]);
     setIsDrawingPolygon(false);
@@ -188,7 +234,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
   };
 
   const handleDragPolygonPoint = (polygonId, pointIndex, x, y) => {
-    setPolygons(polygons.map(polygon => 
+    setPolygons(polygons.map(polygon =>
       polygon.id === polygonId
         ? {
             ...polygon,
@@ -200,41 +246,54 @@ const BoundingBoxImage = ({ imageUrl }) => {
     ));
   };
 
+  const handleClassSelect = (className) => {
+    const selectedColor = colorMap.current[className] || generateRandomColor();
+    if (!colorMap.current[className]) {
+      colorMap.current[className] = selectedColor;
+    }
+    setLabel(className);
+    setColor(selectedColor);
+
+    setBoundingBoxes(boundingBoxes.map(box =>
+      box.id === selectedId ? { ...box, label: className, color: selectedColor } : box
+    ));
+    setPolygons(polygons.map(polygon =>
+      polygon.id === selectedId ? { ...polygon, label: className, color: selectedColor } : polygon
+    ));
+    setShowMenu(false);
+  };
+
+  const handleNewClassSubmit = (e) => {
+    e.preventDefault();
+    const className = label.trim();
+    if (className && !classes.includes(className)) {
+      setClasses([...classes, className]);
+      colorMap.current[className] = color;
+    }
+    setShowMenu(false);
+  };
+
   return (
-    <div style={{ margin: '.625rem' }}>
-      <div style={{ marginBottom: '.625rem' }}>
-        <label style={{ marginRight: '.625rem' }}>
-          Label: 
-        </label>
-        <input 
-          type="text" 
-          value={label} 
-          onChange={handleLabelChange} 
-          style={{ marginRight: '.625rem', padding: '.3125rem' }}
-          placeholder="Enter label"
-        />
-        <label style={{ marginRight: '.625rem' }}>
-          Color: 
-        </label>
-        <input 
-          type="color" 
-          value={color} 
-          onChange={handleColorChange} 
-          style={{ padding: '.3125rem' }}
-        />
-        <button onClick={handleExport} style={{ marginLeft: '.625rem' }}>Export</button>
-        <button onClick={() => isDrawingPolygon ? handleStopDrawingPolygon() : setIsDrawingPolygon(true)} style={{ marginLeft: '.625rem' }}>
-          {isDrawingPolygon ? 'Stop Drawing Polygon' : 'Draw Polygon'}
+    <div>
+      <div style={{ padding: '1.25 rem' }}>
+        <button onClick={() => {
+          if (isDrawingPolygon) {
+            handleStopDrawingPolygon();
+          } else {
+            setIsDrawingPolygon(true);
+          }
+        }} style = {{margin: '.625rem'}}>
+          {isDrawingPolygon ? 'Cancel Polygon' : 'Draw Polygon'}
         </button>
-        {isDrawingPolygon && <button onClick={handleFinishPolygon} style={{ marginLeft: '.625rem' }}>Finish Polygon</button>}
+        <button onClick={handleExport} style = {{margin: '.625rem'}}>Export</button>
       </div>
       <Stage
-        ref={stageRef}
-        width={image ? image.width : 0}
-        height={image ? image.height : 0}
+        width={window.innerWidth}
+        height={window.innerHeight}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        ref={stageRef}
       >
         <Layer>
           <KonvaImage image={image} />
@@ -248,42 +307,16 @@ const BoundingBoxImage = ({ imageUrl }) => {
                 height={box.height}
                 stroke={box.color}
                 strokeWidth={2}
-                draggable
-                onClick={() => handleSelect(box.id)}
-                onTap={() => handleSelect(box.id)}
-                onTransformEnd={(e) => {
-                  const node = e.target;
-                  const scaleX = node.scaleX();
-                  const scaleY = node.scaleY();
-                  node.scaleX(1);
-                  node.scaleY(1);
-                  setBoundingBoxes(boundingBoxes.map(b => 
-                    b.id === box.id 
-                      ? {
-                          ...b,
-                          x: node.x(),
-                          y: node.y(),
-                          width: Math.max(5, node.width() * scaleX),
-                          height: Math.max(5, node.height() * scaleY),
-                        }
-                      : b
-                  ));
-                }}
-                onDragEnd={(e) => {
-                  const { x, y } = e.target.position();
-                  setBoundingBoxes(boundingBoxes.map(b => 
-                    b.id === box.id 
-                      ? { ...b, x, y } 
-                      : b
-                  ));
-                }}
+                onClick={(e) => handleSelect(box.id, 'box', e.evt.clientX, e.evt.clientY)}
               />
               <Text
-                text={box.label}
                 x={box.x}
                 y={box.y - 20}
-                fontSize={18}
+                text={box.label}
+                fontSize={14}
                 fill={box.color}
+                stroke="black"         // Outline color
+                strokeWidth={1}
               />
             </React.Fragment>
           ))}
@@ -301,45 +334,77 @@ const BoundingBoxImage = ({ imageUrl }) => {
             <React.Fragment key={polygon.id}>
               <Line
                 id={polygon.id}
-                points={polygon.points.flatMap(point => [point.x, point.y])}
-                closed
+                points={polygon.points.flatMap(p => [p.x, p.y])}
                 stroke={polygon.color}
                 strokeWidth={2}
-                onClick={() => handleSelect(polygon.id)}
-                onTap={() => handleSelect(polygon.id)}
+                closed
+                onClick={(e) => handleSelect(polygon.id, 'polygon', e.evt.clientX, e.evt.clientY)}
               />
               {polygon.points.map((point, index) => (
                 <Circle
-                  key={index}
+                  key={`${polygon.id}-${index}`}
                   x={point.x}
                   y={point.y}
                   radius={5}
                   fill={polygon.color}
                   draggable
                   onDragMove={(e) => handleDragPolygonPoint(polygon.id, index, e.target.x(), e.target.y())}
-                  onDragEnd={(e) => handleDragPolygonPoint(polygon.id, index, e.target.x(), e.target.y())}
                 />
               ))}
               <Text
-                text={polygon.label}
                 x={polygon.points[0].x}
                 y={polygon.points[0].y - 20}
-                fontSize={18}
+                text={polygon.label}
+                fontSize={14}
                 fill={polygon.color}
+                stroke="black"         // Outline color
+                strokeWidth={1} 
               />
             </React.Fragment>
           ))}
-          {isDrawingPolygon && (
+          {newPolygon.length > 0 && (
             <Line
-              points={newPolygon.flatMap(point => [point.x, point.y])}
+              points={[...newPolygon.flatMap(p => [p.x, p.y]), currentMousePos.x, currentMousePos.y]}
               stroke={color}
               strokeWidth={2}
-              dash={[4, 4]}
             />
           )}
           <Transformer ref={trRef} />
         </Layer>
       </Stage>
+      {showMenu && (
+        <div style={{
+          position: 'absolute',
+          top: menuPosition.y,
+          left: menuPosition.x,
+          backgroundColor: 'white',
+          padding: '.625rem',
+          border: '.0625rem solid black'
+        }}>
+          <label style = {{margin: '.625rem'}}>
+            Class:
+            <input style = {{margin: '.625rem'}} type="text" value={label} onChange={handleLabelChange} />
+          </label>
+          <label style = {{margin: '.625rem'}}>
+            Color:
+            <input style = {{margin: '.625rem'}} type="color" value={color} onChange={handleColorChange} />
+          </label>
+          <button style = {{margin: '.625rem'}} onClick={handleDelete}>Delete</button>
+          <div style = {{margin: '.625rem'}}>
+            Existing Classes:
+            <ul style = {{margin: '.125rem'}}>
+              {classes.map(className => (
+                <li key={className}>
+                  <button onClick={() => handleClassSelect(className)}>{className}</button>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <form onSubmit={handleNewClassSubmit}>
+            <button type="submit">Add Class</button>
+          </form>
+        </div>
+      )}
     </div>
   );
 };

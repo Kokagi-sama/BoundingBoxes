@@ -17,9 +17,9 @@ const App = () => {
   };
 
   return (
-    <div style={{ margin: '20px' }}>
-      <h1 style={{ margin: '10px' }}>Draw Bounding Box on Image</h1>
-      <input style={{ margin: '10px' }} type="file" accept="image/*" onChange={handleImageUpload} />
+    <div style={{ margin: '1.25rem' }}>
+      <h1 style={{ margin: '.625rem' }}>Draw Bounding Box on Image</h1>
+      <input style={{ margin: '.625rem' }} type="file" accept="image/*" onChange={handleImageUpload} />
       <BoundingBoxImage imageUrl={imageUrl} />
     </div>
   );

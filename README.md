@@ -36,10 +36,10 @@ npm start
 
 ## Usage:
 - Drag around the object you wish to perform the bounding box.
-- Change the label of the bounding box while creating the bounding box or after the fact by selecting the desired bounding box and clicking on the `Enter Label` Textbox next to the `Label:` label and typing the desired label.
-- Change the color of the bounding box while creating the bounding box or after the fact by selecting the desired bounding box and clicking on the Color picker next to the `Color:` label and selecting the desired color.
-- Delete the bounding box by pressing the `Del` or `Delete` button while it's being selected.
+- Assign the label/class of the bounding box/polygon after creation the boundingbox/polygon by selecting the desired bounding box and clicking on the Textbox next to the `Class:` label in the popup menu and typing the desired label/class .
+- Change the color of the class by selecting the desired bounding box and clicking on the Color picker next to the `Color:` label in the popup menu and selecting the desired color.
+- Delete the bounding box by pressing the `Del` or `Delete` button while it's being selected or the `Delete` button within the popup menu.
 - Change the image you wish to draw the bounding box on by clicking on `Select File` button.
 - Export the Pascal VOS (Visual Object Classes) format xml file via the `Export` button.
 - Draw Polygons instead of Bounding Boxes via the `Draw Polygon` button.
-- Either stop the drawing of the polygon or finishing it via the `Stop Drawing Polygon` and `Finish Polygon` button respectively. 
+- Cancel the polygon drawing via the `Cancel Polygon` button.
