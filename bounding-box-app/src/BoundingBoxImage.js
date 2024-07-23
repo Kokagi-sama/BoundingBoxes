@@ -106,7 +106,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
     }
   };
 
-  //Non-mouse functions
+  //Label change function
   const handleLabelChange = (e) => {
     const newLabel = e.target.value;
     setLabel(newLabel);
@@ -124,6 +124,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
     ));
   };
 
+  //Color change function
   const handleColorChange = (e) => {
     const newColor = e.target.value;
     setColor(newColor);
