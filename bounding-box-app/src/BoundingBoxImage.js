@@ -147,44 +147,76 @@ const BoundingBoxImage = ({ imageUrl }) => {
 
   const handleExport = () => {
     const exportData = boundingBoxes.map(box => ({
+      type: 'box',
       label: box.label,
       color: box.color,
       x: box.x,
       y: box.y,
       width: box.width,
-      height: box.height
-    }));
-
-    const xml = `
-<annotation>
-  <folder>images</folder>
-  <filename>${imageUrl}</filename>
-  <path>${imageUrl}</path>
-  <source>
-    <database>Unknown</database>
-  </source>
-  <size>
-    <width>${image ? image.width : 0}</width>
-    <height>${image ? image.height : 0}</height>
-    <depth>3</depth>
-  </size>
-  <segmented>0</segmented>
-  ${exportData.map(box => `
-  <object>
-    <name>${box.label}</name>
-    <pose>Unspecified</pose>
-    <truncated>0</truncated>
-    <difficult>0</difficult>
-    <bndbox>
-      <xmin>${Math.round(box.x)}</xmin>
-      <ymin>${Math.round(box.y)}</ymin>
-      <xmax>${Math.round(box.x + box.width)}</xmax>
-      <ymax>${Math.round(box.y + box.height)}</ymax>
-    </bndbox>
-  </object>`).join('\n')}
+      height: box.height,
+      occluded: 0,
+      truncated: 0,
+      difficult: 0
+    })).concat(polygons.map(polygon => ({
+      type: 'polygon',
+      label: polygon.label,
+      color: polygon.color,
+      points: polygon.points,
+      occluded: 0,
+      truncated: 0,
+      difficult: 0,
+      xmin: Math.min(...polygon.points.map(point => point.x)),
+      xmax: Math.max(...polygon.points.map(point => point.x)),
+      ymin: Math.min(...polygon.points.map(point => point.y)),
+      ymax: Math.max(...polygon.points.map(point => point.y))
+    })));
+  
+    const xml = `<annotation>
+    <folder>images</folder>
+    <filename>${imageUrl}</filename>
+    <path>${imageUrl}</path>
+    <source>
+      <database>Unknown</database>
+    </source>
+    <size>
+      <width>${image ? image.width : 0}</width>
+      <height>${image ? image.height : 0}</height>
+      <depth>3</depth>
+    </size>
+    <segmented>0</segmented>${exportData.map(data => data.type === 'box' ? `
+    <object>
+      <name>${data.label}</name>
+      <pose>Unspecified</pose>
+      <truncated>${data.truncated}</truncated>
+      <difficult>${data.difficult}</difficult>
+      <occluded>${data.occluded}</occluded>
+      <bndbox>
+        <xmin>${Math.round(data.x)}</xmin>
+        <ymin>${Math.round(data.y)}</ymin>
+        <xmax>${Math.round(data.x + data.width)}</xmax>
+        <ymax>${Math.round(data.y + data.height)}</ymax>
+      </bndbox>
+    </object>` : `
+    <object>
+      <name>${data.label}</name>
+      <pose>Unspecified</pose>
+      <truncated>${data.truncated}</truncated>
+      <difficult>${data.difficult}</difficult>
+      <occluded>${data.occluded}</occluded>
+      <polygon>${data.points.map((point, index) => `
+        <x${index + 1}>${Math.round(point.x)}</x${index + 1}>
+        <y${index + 1}>${Math.round(point.y)}</y${index + 1}>`).join('')}
+      </polygon>
+      <bndbox>
+        <xmin>${Math.round(data.xmin)}</xmin>
+        <ymin>${Math.round(data.ymin)}</ymin>
+        <xmax>${Math.round(data.xmax)}</xmax>
+        <ymax>${Math.round(data.ymax)}</ymax>
+      </bndbox>
+    </object>`).join('')}
 </annotation>`;
-
-    const blob = new Blob([xml], { type: 'text/xml' });
+  
+    const blob = new Blob([xml.trim()], { type: 'text/xml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -193,7 +225,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  };
+  };  
 
   useEffect(() => {
     const handleKeyDown = (e) => {
