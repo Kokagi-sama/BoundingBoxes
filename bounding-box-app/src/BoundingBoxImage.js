@@ -66,7 +66,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
         height: y - prevBox.y,
       }));
     }
-
+  
     if (isDrawingPolygon && newPolygon.length > 0) {
       const { x, y } = stageRef.current.getPointerPosition();
       setCurrentMousePos({ x, y });
@@ -282,8 +282,36 @@ const BoundingBoxImage = ({ imageUrl }) => {
           }
         : polygon
     ));
-  };
+  };  
 
+  const handleDragEnd = (e, type) => {
+    const id = e.target.id();
+    const node = e.target;
+  
+    if (type === 'box') {
+      setBoundingBoxes(boundingBoxes.map(box =>
+        box.id === id ? { ...box, x: node.x(), y: node.y() } : box
+      ));
+    } else if (type === 'polygon') {
+      const polygon = polygons.find(polygon => polygon.id === id);
+      if (!polygon) return;
+  
+      const deltaX = node.x();
+      const deltaY = node.y();
+  
+      const newPoints = polygon.points.map(point => ({
+        x: point.x + deltaX,
+        y: point.y + deltaY
+      }));
+  
+      node.position({ x: 0, y: 0 });
+  
+      setPolygons(polygons.map(polygon =>
+        polygon.id === id ? { ...polygon, points: newPoints } : polygon
+      ));
+    }
+  };
+    
   //Label/Class (Menu Popup) functions
   const handleClassSelect = (className) => {
     const selectedColor = colorMap.current[className] || generateRandomColor();
@@ -338,76 +366,82 @@ const BoundingBoxImage = ({ imageUrl }) => {
         <Layer>
           <KonvaImage image={image} />
           {boundingBoxes.map((box) => (
-            <React.Fragment key={box.id}>
-              <Rect
-                id={box.id}
-                x={box.x}
-                y={box.y}
-                width={box.width}
-                height={box.height}
-                stroke={box.color}
-                strokeWidth={2}
-                onClick={(e) => handleSelect(box.id, 'box', e.evt.clientX, e.evt.clientY)}
-              />
-              <Text
-                x={box.x}
-                y={box.y - 20}
-                text={box.label}
-                fontSize={14}
-                fill={box.color}
-                stroke="black"         // Outline color
-                strokeWidth={1}
-              />
-            </React.Fragment>
-          ))}
-          {newBox && (
+          <React.Fragment key={box.id}>
             <Rect
-              x={newBox.x}
-              y={newBox.y}
-              width={newBox.width}
-              height={newBox.height}
-              stroke={newBox.color}
+              id={box.id}
+              x={box.x}
+              y={box.y}
+              width={box.width}
+              height={box.height}
+              stroke={box.color}
               strokeWidth={2}
+              draggable
+              onClick={(e) => handleSelect(box.id, 'box', e.evt.clientX, e.evt.clientY)}
+              onDragEnd={(e) => handleDragEnd(e, 'box')}
             />
-          )}
-          {polygons.map((polygon) => (
-            <React.Fragment key={polygon.id}>
-              <Line
-                id={polygon.id}
-                points={polygon.points.flatMap(p => [p.x, p.y])}
-                stroke={polygon.color}
-                strokeWidth={2}
-                closed
-                onClick={(e) => handleSelect(polygon.id, 'polygon', e.evt.clientX, e.evt.clientY)}
+            <Text
+              x={box.x}
+              y={box.y - 20}
+              text={box.label}
+              fontSize={14}
+              fill={box.color}
+              stroke="black"
+              strokeWidth={1}
+            />
+          </React.Fragment>
+        ))}
+
+        {polygons.map((polygon) => (
+          <React.Fragment key={polygon.id}>
+            <Line
+              id={polygon.id}
+              points={polygon.points.flatMap(p => [p.x, p.y])}
+              stroke={polygon.color}
+              strokeWidth={2}
+              closed
+              draggable
+              onClick={(e) => handleSelect(polygon.id, 'polygon', e.evt.clientX, e.evt.clientY)}
+              onDragEnd={(e) => handleDragEnd(e, 'polygon')}
+            />
+            {polygon.points.map((point, index) => (
+              <Circle
+                key={`${polygon.id}-${index}`}
+                x={point.x}
+                y={point.y}
+                radius={5}
+                fill={polygon.color}
+                draggable
+                onDragMove={(e) => handleDragPolygonPoint(polygon.id, index, e.target.x(), e.target.y())}
               />
-              {polygon.points.map((point, index) => (
+            ))}
+            <Text
+              x={polygon.points[0].x}
+              y={polygon.points[0].y - 20}
+              text={polygon.label}
+              fontSize={14}
+              fill={polygon.color}
+              stroke="black"
+              strokeWidth={1}
+            />
+          </React.Fragment>
+        ))}
+          {newPolygon.length > 0 && (
+            <>
+              <Line
+                points={[...newPolygon.flatMap(p => [p.x, p.y]), currentMousePos.x, currentMousePos.y]}
+                stroke={color}
+                strokeWidth={2}
+              />
+              {newPolygon.map((point, index) => (
                 <Circle
-                  key={`${polygon.id}-${index}`}
+                  key={`new-point-${index}`}
                   x={point.x}
                   y={point.y}
                   radius={5}
-                  fill={polygon.color}
-                  draggable
-                  onDragMove={(e) => handleDragPolygonPoint(polygon.id, index, e.target.x(), e.target.y())}
+                  fill={color}
                 />
               ))}
-              <Text
-                x={polygon.points[0].x}
-                y={polygon.points[0].y - 20}
-                text={polygon.label}
-                fontSize={14}
-                fill={polygon.color}
-                stroke="black"         // Outline color
-                strokeWidth={1} 
-              />
-            </React.Fragment>
-          ))}
-          {newPolygon.length > 0 && (
-            <Line
-              points={[...newPolygon.flatMap(p => [p.x, p.y]), currentMousePos.x, currentMousePos.y]}
-              stroke={color}
-              strokeWidth={2}
-            />
+            </>
           )}
           <Transformer ref={trRef} />
         </Layer>
