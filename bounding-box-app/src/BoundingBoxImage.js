@@ -31,6 +31,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
   const trRef = useRef(null);
   const colorMap = useRef({});
   const [currentMousePos, setCurrentMousePos] = useState({ x: 0, y: 0 });
+  const [hoveringFirstPoint, setHoveringFirstPoint] = useState(false);
 
   useEffect(() => {
     setBoundingBoxes([]);
@@ -70,9 +71,12 @@ const BoundingBoxImage = ({ imageUrl }) => {
     if (isDrawingPolygon && newPolygon.length > 0) {
       const { x, y } = stageRef.current.getPointerPosition();
       setCurrentMousePos({ x, y });
+      const firstPoint = newPolygon[0];
+      const distance = Math.hypot(x - firstPoint.x, y - firstPoint.y);
+      setHoveringFirstPoint(distance < 10);
     }
   };
-
+  
   const handleMouseUp = (e) => {
     if (newBox && (newBox.width > 5 || newBox.height > 5)) {
       const { x, y } = stageRef.current.getPointerPosition();
@@ -264,11 +268,13 @@ const BoundingBoxImage = ({ imageUrl }) => {
     }
     setNewPolygon([]);
     setIsDrawingPolygon(false);
+    setHoveringFirstPoint(false); // Reset hovering state
   };
-
+  
   const handleStopDrawingPolygon = () => {
     setIsDrawingPolygon(false);
     setNewPolygon([]);
+    setHoveringFirstPoint(false); // Reset hovering state
   };
 
   const handleDragPolygonPoint = (polygonId, pointIndex, x, y) => {
@@ -390,7 +396,16 @@ const BoundingBoxImage = ({ imageUrl }) => {
             />
           </React.Fragment>
         ))}
-
+          {newBox && (
+            <Rect
+              x={newBox.x}
+              y={newBox.y}
+              width={newBox.width}
+              height={newBox.height}
+              stroke={newBox.color}
+              strokeWidth={2}
+            />
+          )}
         {polygons.map((polygon) => (
           <React.Fragment key={polygon.id}>
             <Line
@@ -425,7 +440,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
             />
           </React.Fragment>
         ))}
-          {newPolygon.length > 0 && (
+            {newPolygon.length > 0 && (
             <>
               <Line
                 points={[...newPolygon.flatMap(p => [p.x, p.y]), currentMousePos.x, currentMousePos.y]}
@@ -438,7 +453,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
                   x={point.x}
                   y={point.y}
                   radius={5}
-                  fill={color}
+                  fill={index === 0 && hoveringFirstPoint ? 'green' : color}  // Change color of the first point
                 />
               ))}
             </>
