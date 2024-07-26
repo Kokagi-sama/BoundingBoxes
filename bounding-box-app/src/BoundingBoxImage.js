@@ -32,6 +32,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
   const colorMap = useRef({});
   const [currentMousePos, setCurrentMousePos] = useState({ x: 0, y: 0 });
   const [hoveringFirstPoint, setHoveringFirstPoint] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(null);
 
   useEffect(() => {
     setBoundingBoxes([]);
@@ -91,10 +92,14 @@ const BoundingBoxImage = ({ imageUrl }) => {
 
   const handleSelect = (id, type, x, y) => {
     if (isDrawingPolygon) return; // Prevent selection while drawing a polygon
-
+  
     setSelectedId(id);
     setMenuPosition({ x, y });
     setShowMenu(true);
+  
+    const index = getIdIndex(id);
+    setSelectedIndex(index);
+  
     if (type === 'box') {
       const selectedBox = boundingBoxes.find(box => box.id === id);
       if (selectedBox) {
@@ -109,6 +114,13 @@ const BoundingBoxImage = ({ imageUrl }) => {
       }
     }
   };
+  
+  const getIdIndex = (id) => {
+    const boxIndex = boundingBoxes.findIndex(box => box.id === id);
+    if (boxIndex !== -1) return boxIndex;
+    return boundingBoxes.length + polygons.findIndex(polygon => polygon.id === id);
+  };
+  
 
   //Label change function
   const handleLabelChange = (e) => {
@@ -346,6 +358,34 @@ const BoundingBoxImage = ({ imageUrl }) => {
     setShowMenu(false);
   };
 
+  const handleNext = () => {
+    if (selectedIndex !== null) {
+      const nextIndex = selectedIndex + 1;
+      if (nextIndex < boundingBoxes.length + polygons.length) {
+        setSelectedIndex(nextIndex);
+        setSelectedId(getIdByIndex(nextIndex));
+      }
+    }
+  };
+  
+  const handlePrevious = () => {
+    if (selectedIndex !== null) {
+      const prevIndex = selectedIndex - 1;
+      if (prevIndex >= 0) {
+        setSelectedIndex(prevIndex);
+        setSelectedId(getIdByIndex(prevIndex));
+      }
+    }
+  };
+  
+  const getIdByIndex = (index) => {
+    if (index < boundingBoxes.length) {
+      return boundingBoxes[index].id;
+    }
+    return polygons[index - boundingBoxes.length].id;
+  };
+  
+
   //Html/UI
   return (
     <div>
@@ -461,39 +501,48 @@ const BoundingBoxImage = ({ imageUrl }) => {
           <Transformer ref={trRef} />
         </Layer>
       </Stage>
-      {showMenu && (
-        <div style={{
-          position: 'absolute',
-          top: menuPosition.y,
-          left: menuPosition.x,
-          backgroundColor: 'white',
-          padding: '.625rem',
-          border: '.0625rem solid black'
-        }}>
-          <label style = {{margin: '.625rem'}}>
-            Class:
-            <input style = {{margin: '.625rem'}} type="text" value={label} onChange={handleLabelChange} />
-          </label>
-          <label style = {{margin: '.625rem'}}>
-            Color:
-            <input style = {{margin: '.625rem'}} type="color" value={color} onChange={handleColorChange} />
-          </label>
-          <button style = {{margin: '.625rem'}} onClick={handleDelete}>Delete</button>
-          <div style = {{margin: '.625rem'}}>
-            Existing Classes:
-            <ul style = {{margin: '.125rem'}}>
-              {classes.map(className => (
-                <li key={className}>
-                  <button onClick={() => handleClassSelect(className)}>{className}</button>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <form onSubmit={handleNewClassSubmit}>
-            <button type="submit">Add Class</button>
-          </form>
+      {showMenu && selectedIndex !== null && (
+      <div style={{
+        position: 'absolute',
+        top: menuPosition.y,
+        left: menuPosition.x,
+        backgroundColor: 'white',
+        padding: '.625rem',
+        border: '.0625rem solid black',
+        zIndex: 1,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '.625rem' }}>
+          <button onClick={handlePrevious} disabled={selectedIndex === 0}>←</button>
+          <span style={{ margin: '0 .625rem' }}>
+            {selectedIndex + 1}/{boundingBoxes.length + polygons.length}
+          </span>
+          <button onClick={handleNext} disabled={selectedIndex === boundingBoxes.length + polygons.length - 1}>→</button>
         </div>
-      )}
+        <label style = {{margin: '.625rem'}}>
+          Class:
+          <input style = {{margin: '.625rem'}} type="text" value={label} onChange={handleLabelChange} />
+        </label>
+        <label style = {{margin: '.625rem'}}>
+          Color:
+          <input style = {{margin: '.625rem'}} type="color" value={color} onChange={handleColorChange} />
+        </label>
+        <button style = {{margin: '.625rem'}} onClick={handleDelete}>Delete</button>
+        <div style = {{margin: '.625rem'}}>
+          Existing Classes:
+          <ul style = {{margin: '.125rem'}}>
+            {classes.map(className => (
+              <li key={className}>
+                <button onClick={() => handleClassSelect(className)}>{className}</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <form onSubmit={handleNewClassSubmit}>
+          <button type="submit">Add Class</button>
+        </form>
+      </div>
+    )}
+
     </div>
   );
 };
