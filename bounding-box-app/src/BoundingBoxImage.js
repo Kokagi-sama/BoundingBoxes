@@ -358,6 +358,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
     setShowMenu(false);
   };
 
+  //Navigation functions
   const handleNext = () => {
     if (selectedIndex !== null) {
       const nextIndex = selectedIndex + 1;
@@ -377,7 +378,8 @@ const BoundingBoxImage = ({ imageUrl }) => {
       }
     }
   };
-  
+
+  //For the actual menu navigation
   const getIdByIndex = (index) => {
     if (index < boundingBoxes.length) {
       return boundingBoxes[index].id;
