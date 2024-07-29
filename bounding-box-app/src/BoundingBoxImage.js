@@ -328,7 +328,7 @@ const BoundingBoxImage = ({ imageUrl }) => {
         polygon.id === id ? { ...polygon, points: newPoints } : polygon
       ));
     }
-  };
+  };  
     
   //Label/Class (Menu Popup) functions
   const handleClassSelect = (className) => {
@@ -384,8 +384,37 @@ const BoundingBoxImage = ({ imageUrl }) => {
     }
     return polygons[index - boundingBoxes.length].id;
   };
-  
 
+  const handleTransformPolygon = (e, polygonId) => {
+    const node = e.target;
+    const scaleX = node.scaleX();
+    const scaleY = node.scaleY();
+    const rotation = node.rotation();
+    const deltaX = node.x();
+    const deltaY = node.y();
+  
+    const newPoints = polygons
+      .find(polygon => polygon.id === polygonId)
+      .points.map((point) => {
+        const x = point.x * scaleX;
+        const y = point.y * scaleY;
+        const rad = (rotation * Math.PI) / 180;
+        return {
+          x: (x * Math.cos(rad) - y * Math.sin(rad)) + deltaX,
+          y: (x * Math.sin(rad) + y * Math.cos(rad)) + deltaY,
+        };
+      });
+  
+    node.scaleX(1);
+    node.scaleY(1);
+    node.rotation(0);
+    node.position({ x: 0, y: 0 });
+  
+    setPolygons(polygons.map(polygon =>
+      polygon.id === polygonId ? { ...polygon, points: newPoints } : polygon
+    ));
+  };
+    
   //Html/UI
   return (
     <div>
@@ -448,16 +477,17 @@ const BoundingBoxImage = ({ imageUrl }) => {
           )}
         {polygons.map((polygon) => (
           <React.Fragment key={polygon.id}>
-            <Line
-              id={polygon.id}
-              points={polygon.points.flatMap(p => [p.x, p.y])}
-              stroke={polygon.color}
-              strokeWidth={2}
-              closed
-              draggable
-              onClick={(e) => handleSelect(polygon.id, 'polygon', e.evt.clientX, e.evt.clientY)}
-              onDragEnd={(e) => handleDragEnd(e, 'polygon')}
-            />
+          <Line
+            id={polygon.id}
+            points={polygon.points.flatMap(p => [p.x, p.y])}
+            stroke={polygon.color}
+            strokeWidth={2}
+            closed
+            draggable
+            onClick={(e) => handleSelect(polygon.id, 'polygon', e.evt.clientX, e.evt.clientY)}
+            onDragEnd={(e) => handleDragEnd(e, 'polygon')}
+            onTransformEnd={(e) => handleTransformPolygon(e, polygon.id)}
+          />
             {polygon.points.map((point, index) => (
               <Circle
                 key={`${polygon.id}-${index}`}
